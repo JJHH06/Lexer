@@ -1,6 +1,7 @@
 import sys
 from graphviz import Digraph
 import copy
+import re
 
 class Tree:
     def __init__(self, root):
@@ -249,31 +250,74 @@ def shunting_yard(user_input):
     return output
 
 
+def validate_input(user_input):
+    if (len(user_input) == 0):
+        print ('Invalid input: Empty input')
+        return False
+    if ('.' in user_input):
+        print ('Invalid input: . is a reserved character')
+        return False
+    two_ors_regex = re.search(r'\|\s*\|', user_input)
+    if (two_ors_regex):
+        print('Invalid input: Two or more consecutive |, error at position: {}'.format(two_ors_regex.start()))
+        return False
+    initial_symbol_regex = re.search(r'^\s*[*+?|.]', user_input)
+    if (initial_symbol_regex):
+        print('Invalid input: Symbols at start are not a valid operation, error at position: {}'.format(initial_symbol_regex.start()))
+        return False
+    final_symbol_regex = re.search(r'[\s]*[|.]$', user_input)
+    if (final_symbol_regex):
+        print('Invalid input: Symbol at end not valid, error at position: {}'.format(final_symbol_regex.start()))
+        return False
+    empty_parenthesis_regex = re.search(r'\(\s*\)', user_input)
+    if (empty_parenthesis_regex):
+        print('Invalid input: Empty parenthesis, error at position: {}'.format(empty_parenthesis_regex.start()))
+        return False
+    operator_open_parenthesis_regex = re.search(r'\(\s*[+*?|.]', user_input)
+    if (operator_open_parenthesis_regex):
+        print('Invalid input: Operators after open parenthesis are not a valid operation, error at position: {}'.format(operator_open_parenthesis_regex.start()))
+        return False
+    operator_closing_parenthesis_regex = re.search(r'[|.]\s*\)', user_input)
+    if (operator_closing_parenthesis_regex):
+        print('Invalid input: Second of operation misssing, error at position: {}'.format(operator_closing_parenthesis_regex.start()))
+        return False
+    
+    parenthesis_count = 0
+    for i in range(len(user_input)):
+        if (user_input[i] == '('):
+            parenthesis_count += 1
+        elif (user_input[i] == ')'):
+            parenthesis_count -= 1
+        if (parenthesis_count < 0):
+            print('Invalid input: Mismatched parenthesis, cannot close a parenthesis that was not opened, error at position: {}'.format(i))
+            return False
+    if (parenthesis_count != 0):
+        #get the last ocurrence of a parenthesis
+        print('Invalid input: Parenthesis mismatch error, close all parenthesis to fix it')
+        return False
+    return True
+
 
 # Main function
 def main():
     # this inputs the user input from the command line
     #print(sys.argv[1])
-    user_input = '(a|b)+abb*' # dummy input
-    user_input = clean_input(user_input) 
-    #TODO: check if the input is valid
-    user_input = format_input(user_input)
-    print('Concats added: ',user_input)
-    output = shunting_yard(user_input)
-    print('Output: ',output)
-    tree = build_tree(output)
-    print('Tree Root: ',tree.key)
-    digraph = Digraph(graph_attr={'dpi': str(200)})
-    postorder_traversal_draw(tree, digraph)
-    # instead of a pdf file, generate a png file with -Tpng:gd
-    digraph.render('expression tree', format='png')
-
-    automata = build_automata(output)
-    draw_automata(automata)
     
+    user_input = sys.argv[1] if len(sys.argv) > 1 else input('Enter a regular expression: ')
 
+    if validate_input(user_input) and (len(user_input) > 0):
+        user_input = clean_input(user_input)
+        user_input = format_input(user_input)
+        output = shunting_yard(user_input)
+        print('Postfix: ',''.join(output))
+        tree = build_tree(output)
 
-
+        digraph = Digraph(graph_attr={'dpi': str(200)})
+        postorder_traversal_draw(tree, digraph)
+        digraph.render('expression tree', format='png')
+        automata = build_automata(output)
+        draw_automata(automata)
+        print('Success!, expression tree and NFA png files generated :)')
 
 if __name__ == "__main__":
     main()
