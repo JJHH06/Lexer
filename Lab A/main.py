@@ -77,8 +77,7 @@ def concatenation_automata(right_automata, left_automata):
     final_states = left_automata.final_states
     alphabet = left_automata.alphabet.union(right_automata.alphabet)
     transitions = left_automata.transitions + right_automata.transitions
-    # replace the transitions to final states of the left automata to the initial state of the right automata
-    
+
     for i in range(len(transitions)):
         if transitions[i][1] in left_automata.final_states:
             transitions[i] = ((transitions[i][0][0], transitions[i][0][1]), right_automata.initial_state)
@@ -111,9 +110,18 @@ def question_automata(automata, current_state):
     epsilon_automata = operand_automata('ε', current_state)
     return or_automata(epsilon_automata, automata, current_state+2)
 
-def positive_closure_automata(automata, current_state):
+def automata_state_change(automata):
     automata_copy = copy.deepcopy(automata)
-    return concatenation_automata(kleene_automata(automata, current_state+2), automata_copy)
+    state_offset = len(automata.states)
+    automata_copy.states = [state + state_offset for state in automata_copy.states]
+    automata_copy.initial_state += state_offset
+    automata_copy.final_states = [state + state_offset for state in automata_copy.final_states]
+    automata_copy.transitions = [((transition[0][0] + state_offset, transition[0][1]), transition[1] + state_offset) for transition in automata_copy.transitions]
+    return automata_copy, state_offset
+
+def positive_closure_automata(automata, current_state):
+    automata_copy, state_offset = automata_state_change(automata)
+    return concatenation_automata(kleene_automata(automata_copy, current_state+state_offset), automata), state_offset+1
 
 def build_automata(postfix_expression):
     unary_operators = ['*','+','?']
@@ -129,7 +137,7 @@ def build_automata(postfix_expression):
             stack.append(or_automata(stack.pop(), stack.pop(), next_state))
             next_state += 2
         elif token == '.':
-            stack.append(concatenation_automata(stack.pop(), stack.pop()))#TODO: make states not to be wasted
+            stack.append(concatenation_automata(stack.pop(), stack.pop()))
             next_state -= 1
         elif token == '*':
             stack.append(kleene_automata(stack.pop(), next_state))
@@ -138,8 +146,9 @@ def build_automata(postfix_expression):
             stack.append(question_automata(stack.pop(), next_state))
             next_state += 4
         elif token == '+':
-            stack.append(positive_closure_automata(stack.pop(), next_state))
-            next_state += 4
+            plus_closure_element, state_offset = positive_closure_automata(stack.pop(), next_state)
+            stack.append(plus_closure_element)
+            next_state += state_offset
     return stack.pop()
 
 
@@ -245,7 +254,7 @@ def shunting_yard(user_input):
 def main():
     # this inputs the user input from the command line
     #print(sys.argv[1])
-    user_input = '(a|b)*' # dummy input
+    user_input = '(a|b)+abb*' # dummy input
     user_input = clean_input(user_input) 
     #TODO: check if the input is valid
     user_input = format_input(user_input)
