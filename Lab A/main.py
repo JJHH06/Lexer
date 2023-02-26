@@ -21,19 +21,23 @@ def draw_automata(automata):
     f = Digraph('finite_state_machine', format='png')
     f.attr(rankdir='LR')
     f.attr('node', shape='circle') #makes all nodes circles
-    for state in automata.states:
-        if state == automata.initial_state:
-            f.node('start_mark', shape='point', style='invis')
-            f.node(str(state))
-            f.edge('start_mark', str(state))
-        elif state in automata.final_states:
-            f.node(str(state), shape='doublecircle')
-        else:
-            f.node(str(state))
+    # inner_nodes is equal to all the nodes that are not the initial state or the final states
+    inner_nodes = [state for state in automata.states if state not in automata.final_states and state != automata.initial_state]
+    f.node('start_mark', shape='point', style='invis')
+    f.node(str(automata.initial_state))
+    f.edge('start_mark', str(automata.initial_state))
+    for operand in automata.alphabet:
+        next_states = [transition[1] for transition in automata.transitions if transition[0] == (automata.initial_state, operand)]
+        for next_state in next_states:
+            f.edge(str(automata.initial_state), str(next_state), label=operand)
+    for state in inner_nodes:
+        f.node(str(state))
         for operand in automata.alphabet:
             next_states = [transition[1] for transition in automata.transitions if transition[0] == (state, operand)]
             for next_state in next_states:
                 f.edge(str(state), str(next_state), label=operand)
+    for state in automata.final_states:
+        f.node(str(state), shape='doublecircle')
     f.render('NFA', format='png')
     
 
@@ -68,9 +72,9 @@ def or_automata(right_automata, left_automata, current_state):
 
 def concatenation_automata(right_automata, left_automata):
     # union of the states of the two automata
-    states = [x for x in left_automata.states if x not in left_automata.final_states] + right_automata.states
+    states = [x for x in right_automata.states if x not in right_automata.final_states] + left_automata.states
     initial_state = left_automata.initial_state
-    final_states = right_automata.final_states
+    final_states = left_automata.final_states
     alphabet = left_automata.alphabet.union(right_automata.alphabet)
     transitions = left_automata.transitions + right_automata.transitions
     # replace the transitions to final states of the left automata to the initial state of the right automata
@@ -78,6 +82,9 @@ def concatenation_automata(right_automata, left_automata):
     for i in range(len(transitions)):
         if transitions[i][1] in left_automata.final_states:
             transitions[i] = ((transitions[i][0][0], transitions[i][0][1]), right_automata.initial_state)
+        elif transitions[i][1] in right_automata.final_states:
+            transitions[i] = ((transitions[i][0][0], transitions[i][0][1]), left_automata.final_states[0])
+    
     return Automata(states, alphabet, transitions, initial_state, final_states)
 
 def kleene_automata(automata, current_state):
@@ -123,7 +130,7 @@ def build_automata(postfix_expression):
             next_state += 2
         elif token == '.':
             stack.append(concatenation_automata(stack.pop(), stack.pop()))#TODO: make states not to be wasted
-            #we do not need to add states because the concatenation automata already adds the states
+            next_state -= 1
         elif token == '*':
             stack.append(kleene_automata(stack.pop(), next_state))
             next_state += 2
@@ -238,7 +245,7 @@ def shunting_yard(user_input):
 def main():
     # this inputs the user input from the command line
     #print(sys.argv[1])
-    user_input = '(a|b)cdd*' # dummy input
+    user_input = '(a|b)*' # dummy input
     user_input = clean_input(user_input) 
     #TODO: check if the input is valid
     user_input = format_input(user_input)
