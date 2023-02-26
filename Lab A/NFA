@@ -1,0 +1,30 @@
+digraph finite_state_machine {
+	rankdir=LR
+	node [shape=circle]
+	0
+	0 -> 1 [label=a]
+	1
+	1 -> 6 [label="ε"]
+	2
+	2 -> 3 [label=b]
+	3
+	3 -> 6 [label="ε"]
+	start_mark [shape=point style=invis]
+	4
+	start_mark -> 4
+	4 -> 0 [label="ε"]
+	4 -> 2 [label="ε"]
+	6
+	6 -> 8 [label=c]
+	8
+	8 -> 12 [label=d]
+	10
+	10 -> 11 [label=d]
+	11
+	11 -> 10 [label="ε"]
+	11 -> 13 [label="ε"]
+	12
+	12 -> 10 [label="ε"]
+	12 -> 13 [label="ε"]
+	13 [shape=doublecircle]
+}
