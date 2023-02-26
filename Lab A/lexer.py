@@ -18,6 +18,14 @@ class Automata:
         self.final_states = final_states
     
 
+def embellish_automata(automata):
+    state_map = {prev_state: new_state for new_state, prev_state in enumerate(automata.states)}
+    states = [state_map[state] for state in automata.states]
+    initial_state = state_map[automata.initial_state]
+    final_states = [state_map[state] for state in automata.final_states]
+    transitions = [((state_map[transition[0][0]], transition[0][1]), state_map[transition[1]]) for transition in automata.transitions]
+    return Automata(states, automata.alphabet, transitions, initial_state, final_states)
+
 def draw_automata(automata):
     f = Digraph('finite_state_machine', format='png')
     f.attr(rankdir='LR')
@@ -73,18 +81,16 @@ def or_automata(right_automata, left_automata, current_state):
 
 def concatenation_automata(right_automata, left_automata):
     # union of the states of the two automata
-    states = [x for x in right_automata.states if x not in right_automata.final_states] + left_automata.states
+    states = [x for x in left_automata.states if x not in left_automata.final_states] + right_automata.states
+
     initial_state = left_automata.initial_state
-    final_states = left_automata.final_states
+    final_states = right_automata.final_states
     alphabet = left_automata.alphabet.union(right_automata.alphabet)
     transitions = left_automata.transitions + right_automata.transitions
 
     for i in range(len(transitions)):
         if transitions[i][1] in left_automata.final_states:
             transitions[i] = ((transitions[i][0][0], transitions[i][0][1]), right_automata.initial_state)
-        elif transitions[i][1] in right_automata.final_states:
-            transitions[i] = ((transitions[i][0][0], transitions[i][0][1]), left_automata.final_states[0])
-    
     return Automata(states, alphabet, transitions, initial_state, final_states)
 
 def kleene_automata(automata, current_state):
@@ -113,7 +119,9 @@ def question_automata(automata, current_state):
 
 def automata_state_change(automata):
     automata_copy = copy.deepcopy(automata)
-    state_offset = len(automata.states)
+    #offset be equal to the maximum state of the automata
+
+    state_offset = max(automata.states)+1
     automata_copy.states = [state + state_offset for state in automata_copy.states]
     automata_copy.initial_state += state_offset
     automata_copy.final_states = [state + state_offset for state in automata_copy.final_states]
@@ -122,7 +130,7 @@ def automata_state_change(automata):
 
 def positive_closure_automata(automata, current_state):
     automata_copy, state_offset = automata_state_change(automata)
-    return concatenation_automata(kleene_automata(automata_copy, current_state+state_offset), automata), state_offset+1
+    return concatenation_automata(kleene_automata(automata_copy, current_state+state_offset), automata), state_offset+2
 
 def build_automata(postfix_expression):
     unary_operators = ['*','+','?']
@@ -134,12 +142,12 @@ def build_automata(postfix_expression):
         if token not in unary_operators and token not in binary_operators:
             stack.append(operand_automata(token, next_state))
             next_state += 2
+        #else checks which operator is it
         elif token == '|':
             stack.append(or_automata(stack.pop(), stack.pop(), next_state))
             next_state += 2
         elif token == '.':
             stack.append(concatenation_automata(stack.pop(), stack.pop()))
-            next_state -= 1
         elif token == '*':
             stack.append(kleene_automata(stack.pop(), next_state))
             next_state += 2
@@ -303,7 +311,8 @@ def main():
     # this inputs the user input from the command line
     #print(sys.argv[1])
     
-    user_input = sys.argv[1] if len(sys.argv) > 1 else input('Enter a regular expression: ')
+    # user_input = sys.argv[1] if len(sys.argv) > 1 else input('Enter a regular expression: ')
+    user_input = '0?(1?)?0*'
 
     if validate_input(user_input) and (len(user_input) > 0):
         user_input = clean_input(user_input)
@@ -316,6 +325,7 @@ def main():
         postorder_traversal_draw(tree, digraph)
         digraph.render('expression tree', format='png')
         automata = build_automata(output)
+        automata = embellish_automata(automata)
         draw_automata(automata)
         print('Success!, expression tree and NFA png files generated :)')
 
