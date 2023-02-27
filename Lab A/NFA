@@ -2,45 +2,47 @@ digraph finite_state_machine {
 	rankdir=LR
 	node [shape=circle]
 	start_mark [shape=point style=invis]
-	4
-	start_mark -> 4
-	4 -> 0 [label="ε"]
-	4 -> 2 [label="ε"]
 	0
-	0 -> 1 [label=0]
+	start_mark -> 0
+	0 -> 4 [label="ε"]
+	0 -> 7 [label="ε"]
 	1
-	1 -> 13 [label="ε"]
+	1 -> 5 [label="ε"]
 	2
-	2 -> 3 [label="ε"]
+	2 -> 3 [label=b]
 	3
-	3 -> 13 [label="ε"]
+	3 -> 5 [label="ε"]
+	4
+	4 -> 6 [label="ε"]
+	4 -> 2 [label="ε"]
 	5
-	5 -> 6 [label=1]
+	5 -> 4 [label="ε"]
+	5 -> 7 [label="ε"]
 	6
-	6 -> 10 [label="ε"]
+	6 -> 1 [label=a]
 	7
-	7 -> 8 [label="ε"]
+	7 -> 12 [label=a]
 	8
-	8 -> 10 [label="ε"]
+	8 -> 9 [label=a]
 	9
-	9 -> 5 [label="ε"]
-	9 -> 7 [label="ε"]
+	9 -> 17 [label="ε"]
 	10
-	10 -> 16 [label="ε"]
+	10 -> 11 [label=b]
 	11
-	11 -> 12 [label="ε"]
+	11 -> 17 [label="ε"]
 	12
-	12 -> 16 [label="ε"]
+	12 -> 8 [label="ε"]
+	12 -> 10 [label="ε"]
 	13
-	13 -> 9 [label="ε"]
-	13 -> 11 [label="ε"]
+	13 -> 14 [label=a]
 	14
-	14 -> 15 [label=0]
+	14 -> 18 [label="ε"]
 	15
-	15 -> 14 [label="ε"]
-	15 -> 17 [label="ε"]
+	15 -> 16 [label=b]
 	16
-	16 -> 14 [label="ε"]
-	16 -> 17 [label="ε"]
-	17 [shape=doublecircle]
+	16 -> 18 [label="ε"]
+	17
+	17 -> 13 [label="ε"]
+	17 -> 15 [label="ε"]
+	18 [shape=doublecircle]
 }

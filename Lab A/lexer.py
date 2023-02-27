@@ -1,189 +1,14 @@
+# Created by: José Hurtarte
+# Created on: 20/02/2023
+# Last modified on: 26/02/2023
+# Description: Lexer for an infix regular expression
+
 import sys
 from graphviz import Digraph
-import copy
 import re
 
-class Tree:
-    def __init__(self, root):
-        self.key = root
-        self.leftChild = None
-        self.rightChild = None
-
-class Automata:
-    def __init__(self, states, alphabet, transitions, initial_state, final_states):
-        self.states = states
-        self.alphabet = alphabet
-        self.transitions = transitions
-        self.initial_state = initial_state
-        self.final_states = final_states
-    
-
-def embellish_automata(automata):
-    state_map = {prev_state: new_state for new_state, prev_state in enumerate(automata.states)}
-    states = [state_map[state] for state in automata.states]
-    initial_state = state_map[automata.initial_state]
-    final_states = [state_map[state] for state in automata.final_states]
-    transitions = [((state_map[transition[0][0]], transition[0][1]), state_map[transition[1]]) for transition in automata.transitions]
-    return Automata(states, automata.alphabet, transitions, initial_state, final_states)
-
-def draw_automata(automata):
-    f = Digraph('finite_state_machine', format='png')
-    f.attr(rankdir='LR')
-    f.attr('node', shape='circle') #makes all nodes circles
-    # inner_nodes is equal to all the nodes that are not the initial state or the final states
-    inner_nodes = [state for state in automata.states if state not in automata.final_states and state != automata.initial_state]
-    f.node('start_mark', shape='point', style='invis')
-    f.node(str(automata.initial_state))
-    f.edge('start_mark', str(automata.initial_state))
-    for operand in automata.alphabet:
-        next_states = [transition[1] for transition in automata.transitions if transition[0] == (automata.initial_state, operand)]
-        for next_state in next_states:
-            f.edge(str(automata.initial_state), str(next_state), label=operand)
-    for state in inner_nodes:
-        f.node(str(state))
-        for operand in automata.alphabet:
-            next_states = [transition[1] for transition in automata.transitions if transition[0] == (state, operand)]
-            for next_state in next_states:
-                f.edge(str(state), str(next_state), label=operand)
-    for state in automata.final_states:
-        f.node(str(state), shape='doublecircle')
-    f.render('NFA', format='png')
-    
-
-def operand_automata(subexpression, current_state):
-    states = [current_state, current_state+1]
-    alphabet = {subexpression}
-    initial_state = current_state
-    final_states = [current_state+1]
-    transitions = [((current_state, subexpression), current_state+1)]
-    return Automata(states, alphabet, transitions, initial_state, final_states)
-
-def or_automata(right_automata, left_automata, current_state):
-    # union of the states of the two automata
-    states = left_automata.states + right_automata.states
-    states.extend([current_state, current_state+1])
-    initial_state = current_state
-    final_states = [current_state+1]
-    # union of the alphabet of the two automata
-    alphabet = left_automata.alphabet.union(right_automata.alphabet)
-    alphabet.add('ε')
-    # union of the transitions of the two automata
-    transitions = left_automata.transitions + right_automata.transitions
-    # add transitions to the new initial state
-    transitions.append(((current_state, 'ε'), left_automata.initial_state))
-    transitions.append(((current_state, 'ε'), right_automata.initial_state))
-    # add transitions from the final states of the two automata to the new final state
-    for state in left_automata.final_states:
-        transitions.append(((state, 'ε'), current_state+1))
-    for state in right_automata.final_states:
-        transitions.append(((state, 'ε'), current_state+1))
-    return Automata(states, alphabet, transitions, initial_state, final_states)
-
-def concatenation_automata(right_automata, left_automata):
-    # union of the states of the two automata
-    states = [x for x in left_automata.states if x not in left_automata.final_states] + right_automata.states
-
-    initial_state = left_automata.initial_state
-    final_states = right_automata.final_states
-    alphabet = left_automata.alphabet.union(right_automata.alphabet)
-    transitions = left_automata.transitions + right_automata.transitions
-
-    for i in range(len(transitions)):
-        if transitions[i][1] in left_automata.final_states:
-            transitions[i] = ((transitions[i][0][0], transitions[i][0][1]), right_automata.initial_state)
-    return Automata(states, alphabet, transitions, initial_state, final_states)
-
-def kleene_automata(automata, current_state):
-    states = automata.states
-    states.extend([current_state, current_state+1])
-    initial_state = current_state
-    final_states = [current_state+1]
-    alphabet = automata.alphabet
-    alphabet.add('ε')
-    transitions = automata.transitions
-    # transition the final states of the automata to the initial state
-    for state in automata.final_states:
-        transitions.append(((state, 'ε'), automata.initial_state))
-    # transition from the initial state to the initial state of the automata
-    transitions.append(((current_state, 'ε'), automata.initial_state))
-    # transition from the final states of the automata to the final state
-    for state in automata.final_states:
-        transitions.append(((state, 'ε'), current_state+1))
-    # transition from the initial state to the final state
-    transitions.append(((current_state, 'ε'), current_state+1))
-    return Automata(states, alphabet, transitions, initial_state, final_states)
-
-def question_automata(automata, current_state):
-    epsilon_automata = operand_automata('ε', current_state)
-    return or_automata(epsilon_automata, automata, current_state+2)
-
-def automata_state_change(automata):
-    automata_copy = copy.deepcopy(automata)
-    #offset be equal to the maximum state of the automata
-
-    state_offset = max(automata.states)+1
-    automata_copy.states = [state + state_offset for state in automata_copy.states]
-    automata_copy.initial_state += state_offset
-    automata_copy.final_states = [state + state_offset for state in automata_copy.final_states]
-    automata_copy.transitions = [((transition[0][0] + state_offset, transition[0][1]), transition[1] + state_offset) for transition in automata_copy.transitions]
-    return automata_copy, state_offset
-
-def positive_closure_automata(automata, current_state):
-    automata_copy, state_offset = automata_state_change(automata)
-    return concatenation_automata(kleene_automata(automata_copy, current_state+state_offset), automata), state_offset+2
-
-def build_automata(postfix_expression):
-    unary_operators = ['*','+','?']
-    binary_operators = ['|','.']
-    stack = []
-    next_state = 0
-    for token in postfix_expression:
-        # Checks if token is a valid operand
-        if token not in unary_operators and token not in binary_operators:
-            stack.append(operand_automata(token, next_state))
-            next_state += 2
-        #else checks which operator is it
-        elif token == '|':
-            stack.append(or_automata(stack.pop(), stack.pop(), next_state))
-            next_state += 2
-        elif token == '.':
-            stack.append(concatenation_automata(stack.pop(), stack.pop()))
-        elif token == '*':
-            stack.append(kleene_automata(stack.pop(), next_state))
-            next_state += 2
-        elif token == '?':
-            stack.append(question_automata(stack.pop(), next_state))
-            next_state += 4
-        elif token == '+':
-            plus_closure_element, state_offset = positive_closure_automata(stack.pop(), next_state)
-            stack.append(plus_closure_element)
-            next_state += state_offset
-    return stack.pop()
-
-
-#builds a tree based on the Tree class
-# TODO: Modify to do this but with classes?
-def build_tree(postfix_expression):
-    unary_operators = ['*','+','?']
-    binary_operators = ['|','.']
-    stack = []
-    for token in postfix_expression:
-        # Checks if token is a valid operand
-        if token not in unary_operators and token not in binary_operators:
-            stack.append(Tree(token))
-        # checks if token is a valid binary operator
-        elif token in binary_operators:
-            operator_tree = Tree(token)
-            operator_tree.rightChild = stack.pop()
-            operator_tree.leftChild = stack.pop()
-            stack.append(operator_tree)
-        # checks if token is a valid unary operator
-        elif token in unary_operators:
-            operator_tree = Tree(token)
-            operator_tree.leftChild = stack.pop()
-            stack.append(operator_tree)
-    return stack.pop()
-
+from Automata import *
+from ExpressionTree import *
 
 # cleans the input from whitespaces
 # TODO: Modify to do this but with classes?
@@ -191,22 +16,6 @@ def clean_input(user_input):
     user_input = user_input.replace(' ','')
     
     return user_input
-
-def postorder_traversal_draw(tree, digraph):
-    if tree:
-        if tree.leftChild:
-            digraph.edge(str(id(tree)), str(id(tree.leftChild)))
-            postorder_traversal_draw(tree.leftChild, digraph)
-        if tree.rightChild:
-            digraph.edge(str(id(tree)), str(id(tree.rightChild)))
-            postorder_traversal_draw(tree.rightChild, digraph)
-        digraph.node(str(id(tree)), str(tree.key))
-    else:
-        return
-
-
-
-
 
 # TODO: Modify to do this but with classes?
 def format_input(user_input):
@@ -231,31 +40,6 @@ def format_input(user_input):
         else:
             result = result + user_input[i]
     return result
-
-# Shunting yard algorithm
-# Based on the wikipedia pseudocode and from from the pseudocode from geeksforgeeks
-def shunting_yard(user_input):
-    precedence_table= {'|':1,'.':2,'*':3,'+':3,'?':3,'(':-1,')':-1}
-    operators = ['|','*','+','?','.']
-    output = []
-    operator_stack = []
-    for token in user_input:
-        if token in operators:
-            while (len(operator_stack)>0 and precedence_table[token] <= precedence_table[operator_stack[-1]]):
-                output.append(operator_stack.pop())
-            operator_stack.append(token)
-        else:
-            if token != '(' and token != ')':
-                output.append(token)
-            elif token == '(':
-                operator_stack.append(token)
-            elif token == ')':
-                while (len(operator_stack)>0 and operator_stack[-1] != '('):
-                    output.append(operator_stack.pop())
-                operator_stack.pop()
-    while (len(operator_stack)>0):
-        output.append(operator_stack.pop())
-    return output
 
 
 def validate_input(user_input):
@@ -300,7 +84,6 @@ def validate_input(user_input):
             print('Invalid input: Mismatched parenthesis, cannot close a parenthesis that was not opened, error at position: {}'.format(i))
             return False
     if (parenthesis_count != 0):
-        #get the last ocurrence of a parenthesis
         print('Invalid input: Parenthesis mismatch error, close all parenthesis to fix it')
         return False
     return True
@@ -308,11 +91,9 @@ def validate_input(user_input):
 
 # Main function
 def main():
-    # this inputs the user input from the command line
-    #print(sys.argv[1])
-    
-    # user_input = sys.argv[1] if len(sys.argv) > 1 else input('Enter a regular expression: ')
-    user_input = '0?(1?)?0*'
+    # receive inputs from command line or console input
+    user_input = sys.argv[1] if len(sys.argv) > 1 else input('Enter a regular expression: ')
+    # user_input = '0?(1?)?0*' #Dummy input, uncomment for debugging
 
     if validate_input(user_input) and (len(user_input) > 0):
         user_input = clean_input(user_input)
