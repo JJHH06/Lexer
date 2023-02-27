@@ -5,7 +5,7 @@ digraph finite_state_machine {
 	0
 	start_mark -> 0
 	0 -> 4 [label="ε"]
-	0 -> 7 [label="ε"]
+	0 -> 2 [label="ε"]
 	1
 	1 -> 5 [label="ε"]
 	2
@@ -13,36 +13,6 @@ digraph finite_state_machine {
 	3
 	3 -> 5 [label="ε"]
 	4
-	4 -> 6 [label="ε"]
-	4 -> 2 [label="ε"]
-	5
-	5 -> 4 [label="ε"]
-	5 -> 7 [label="ε"]
-	6
-	6 -> 1 [label=a]
-	7
-	7 -> 12 [label=a]
-	8
-	8 -> 9 [label=a]
-	9
-	9 -> 17 [label="ε"]
-	10
-	10 -> 11 [label=b]
-	11
-	11 -> 17 [label="ε"]
-	12
-	12 -> 8 [label="ε"]
-	12 -> 10 [label="ε"]
-	13
-	13 -> 14 [label=a]
-	14
-	14 -> 18 [label="ε"]
-	15
-	15 -> 16 [label=b]
-	16
-	16 -> 18 [label="ε"]
-	17
-	17 -> 13 [label="ε"]
-	17 -> 15 [label="ε"]
-	18 [shape=doublecircle]
+	4 -> 1 [label=a]
+	5 [shape=doublecircle]
 }
